@@ -31,19 +31,9 @@
             100% { transform: scale(1); }
         }
 
-        @keyframes sparkle {
-            0% {
-                transform: scale(0) rotate(0deg);
-                opacity: 0;
-            }
-            50% {
-                transform: scale(1) rotate(180deg);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(0) rotate(360deg);
-                opacity: 0;
-            }
+        @keyframes modalOpen {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
         }
 
         .slide-in-left {
@@ -62,16 +52,6 @@
 
         .celebrate {
             animation: celebrate 0.8s ease-out;
-        }
-
-        .sparkle {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: radial-gradient(circle, rgba(255, 215, 0, 0.8), transparent);
-            border-radius: 50%;
-            z-index: 1000;
-            animation: sparkle 1.5s ease-out forwards;
         }
 
         .date-card {
@@ -118,10 +98,78 @@
             50% { opacity: 1; }
             100% { opacity: 0.6; }
         }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+            transform: scale(0.8);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-content.active {
+            transform: scale(1);
+            opacity: 1;
+            animation: modalOpen 0.3s ease-out forwards;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #333;
+            transition: color 0.2s ease;
+        }
+
+        .modal-close:hover {
+            color: #e53e3e;
+        }
+
+        .info-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .info-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
-    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden relative">
+        <!-- Info Button -->
+        <button id="info-btn" class="info-btn absolute top-4 left-4 bg-[#111111] text-white font-bold py-2 px-4 rounded-full flex items-center shadow-md">
+            <i class="fas fa-info-circle mr-2"></i> Info
+        </button>
+
         <!-- Header -->
         <div class="bg-[#111111] text-white py-8 px-8 text-center">
             <h1 class="text-4xl font-extrabold tracking-tight">🎂 Угадаю твой день рождения!</h1>
@@ -202,7 +250,7 @@
             <div id="result-section" class="hidden bg-green-50 border border-green-200 rounded-xl p-8 text-center">
                 <div class="text-green-800 text-3xl font-extrabold mb-3">🎉 Ура! Я угадал!</div>
                 <p class="text-green-600 text-lg">Твой день рождения: <span id="final-date" class="font-bold"></span></p>
-                <p class="text-green-600 mt-3 text-lg">Потребовалось попыток: <span id="final-attempts" class="font-bold"></span></p>
+                <p class="text-green-600 mt-3 text-lg"> P尝试: <span id="final-attempts" class="font-bold"></span></p>
                 <button id="play-again-btn" class="mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 shadow-md">
                     Попробовать ещё раз
                 </button>
@@ -211,7 +259,27 @@
 
         <!-- Footer -->
         <div class="bg-gray-100 py-6 px-8 text-center text-gray-600 text-sm">
-            Сделано с ❤️ Endermanik13
+            Сделано Endermanik13
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal-overlay hidden">
+        <div id="modal-content" class="modal-content">
+            <button id="modal-close" class="modal-close">×</button>
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Как это работает?</h2>
+            <p class="text-gray-600 mb-4">
+                Этот сайт помогает угадать твой день рождения с помощью умного алгоритма! Вот как это работает:
+            </p>
+            <ul class="list-disc list-inside text-gray-600 mb-4">
+                <li>Я предлагаю дату, которая, по моему мнению, может быть твоим днём рождения.</li>
+                <li>Ты говоришь, раньше или позже эта дата по сравнению с твоим настоящим днём рождения.</li>
+                <li>Я сужаю диапазон возможных дат и предлагаю новую дату.</li>
+                <li>Мы повторяем этот процесс, пока не найдём точную дату!</li>
+            </ul>
+            <p class="text-gray-600">
+                Это весёлая игра, которая использует бинарный поиск для минимизации количества попыток. Попробуй и убедись, как быстро я могу угадать!
+            </p>
         </div>
     </div>
 
@@ -256,7 +324,11 @@
                 finalAttempts: document.getElementById('final-attempts'),
                 playAgainBtn: document.getElementById('play-again-btn'),
                 currentDateContainer: document.getElementById('current-date-container'),
-                resetBtn: document.getElementById('reset-btn')
+                resetBtn: document.getElementById('reset-btn'),
+                infoBtn: document.getElementById('info-btn'),
+                infoModal: document.getElementById('info-modal'),
+                modalContent: document.getElementById('modal-content'),
+                modalClose: document.getElementById('modal-close')
             };
 
             // Initialize the app
@@ -499,22 +571,6 @@
                 }, 600);
             }
 
-            // Create sparkle effect
-            function createSparkleEffect() {
-                const container = elements.currentDateContainer;
-                const rect = container.getBoundingClientRect();
-
-                for (let i = 0; i < 30; i++) {
-                    const sparkle = document.createElement('div');
-                    sparkle.className = 'sparkle';
-                    sparkle.style.left = `${rect.left + Math.random() * rect.width}px`;
-                    sparkle.style.top = `${rect.top + Math.random() * rect.height}px`;
-                    sparkle.style.animationDelay = `${Math.random() * 0.5}s`;
-                    document.body.appendChild(sparkle);
-                    setTimeout(() => sparkle.remove(), 2000);
-                }
-            }
-
             // Show error message
             function showError(message) {
                 const errorDiv = document.createElement('div');
@@ -528,7 +584,6 @@
             function handleCorrectGuess() {
                 state.correctDate = state.dates[state.currentIndex];
                 elements.currentDateContainer.classList.add('celebrate');
-                createSparkleEffect();
 
                 setTimeout(() => {
                     elements.finalDate.textContent = 
@@ -560,6 +615,23 @@
                 init();
             }
 
+            // Modal controls
+            function openModal() {
+                elements.infoModal.classList.remove('hidden');
+                setTimeout(() => {
+                    elements.infoModal.classList.add('active');
+                    elements.modalContent.classList.add('active');
+                }, 10);
+            }
+
+            function closeModal() {
+                elements.modalContent.classList.remove('active');
+                elements.infoModal.classList.remove('active');
+                setTimeout(() => {
+                    elements.infoModal.classList.add('hidden');
+                }, 300);
+            }
+
             // Setup event listeners
             function setupEventListeners() {
                 elements.earlierBtn.addEventListener('click', () => {
@@ -579,6 +651,15 @@
                 elements.playAgainBtn.addEventListener('click', playAgain);
                 elements.resetBtn.addEventListener('click', resetSearch);
 
+                // Info modal listeners
+                elements.infoBtn.addEventListener('click', openModal);
+                elements.modalClose.addEventListener('click', closeModal);
+                elements.infoModal.addEventListener('click', (e) => {
+                    if (e.target === elements.infoModal) {
+                        closeModal();
+                    }
+                });
+
                 document.addEventListener('keydown', (e) => {
                     if (state.isAnimating || state.isLoading) return;
 
@@ -588,6 +669,8 @@
                         findNewDate('later');
                     } else if (e.key === 'Enter') {
                         handleCorrectGuess();
+                    } else if (e.key === 'Escape' && !elements.infoModal.classList.contains('hidden')) {
+                        closeModal();
                     }
                 });
             }
