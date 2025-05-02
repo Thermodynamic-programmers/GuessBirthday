@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Угадай день рождения</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes slideIn {
+            0% {
+                transform: translateX(var(--from)) scale(0.95);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes celebrate {
+            0% { transform: scale(1); }
+            25% { transform: scale(1.2); }
+            50% { transform: scale(0.95); }
+            75% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes sparkle {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1) rotate(180deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .slide-in-left {
+            --from: -100%;
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .slide-in-right {
+            --from: 100%;
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .celebrate {
+            animation: celebrate 0.8s ease-out;
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.8), transparent);
+            border-radius: 50%;
+            z-index: 1000;
+            animation: sparkle 1.5s ease-out forwards;
+        }
+
+        .date-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .date-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .range-display {
+            transition: all 0.3s ease;
+            opacity: 0.7;
+        }
+
+        .range-display:hover {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .correct-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .correct-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .disabled-btn {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(0.95);
+        }
+
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-[#111111] text-white py-8 px-8 text-center">
+            <h1 class="text-4xl font-extrabold tracking-tight">🎂 Угадаю твой день рождения!</h1>
+            <p class="mt-3 text-gray-200 text-lg">Я предложу даты, а ты подскажи, раньше или позже твой день рождения</p>
+        </div>
+
+        <!-- Main content -->
+        <div class="p-8">
+            <!-- Date carousel -->
+            <div class="relative mb-10">
+                <div class="flex items-center justify-center space-x-6">
+                    <!-- Left range display -->
+                    <div class="range-display text-center w-1/4">
+                        <div class="text-gray-500 text-sm font-medium">Не раньше</div>
+                        <div id="min-range" class="text-gray-700 font-semibold text-lg">-</div>
+                        <div class="text-gray-400 text-xs mt-1">ГГГГ.ММ.ДД</div>
+                    </div>
+
+                    <!-- Main date -->
+                    <div id="current-date-container" class="date-card bg-white border-2 border-gray-100 rounded-2xl p-8 text-center w-2/4 shadow-xl relative z-10">
+                        <div class="text-gray-600 mb-3 font-medium">Я думаю, твой день рождения:</div>
+                        <div id="current-date" class="text-5xl font-extrabold text-[#111111] mb-4">Загрузка...</div>
+                        <div id="date-age" class="text-gray-500 text-lg">(Будет рассчитано)</div>
+                    </div>
+
+                    <!-- Right range display -->
+                    <div class="range-display text-center w-1/4">
+                        <div class="text-gray-500 text-sm font-medium">Не позже</div>
+                        <div id="max-range" class="text-gray-700 font-semibold text-lg">-</div>
+                        <div class="text-gray-400 text-xs mt-1">ГГГГ.ММ.ДД</div>
+                    </div>
+                </div>
+
+                <!-- Navigation buttons -->
+                <div class="flex justify-center mt-10 space-x-8">
+                    <button id="earlier-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 px-8 rounded-full transition-all duration-300 flex items-center shadow-md">
+                        <i class="fas fa-chevron-left mr-2"></i> Раньше
+                    </button>
+
+                    <button id="correct-btn" class="correct-btn bg-[#111111] hover:bg-gray-800 text-white font-bold py-4 px-8 rounded-full flex items-center shadow-md">
+                        <i class="fas fa-check-circle mr-2"></i> Это моя дата!
+                    </button>
+
+                    <button id="later-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 px-8 rounded-full transition-all duration-300 flex items-center shadow-md">
+                        Позже <i class="fas fa-chevron-right ml-2"></i>
+                    </button>
+                </div>
+
+                <!-- Undo button -->
+                <div class="mt-6 text-center">
+                    <button id="undo-btn" class="text-sm text-gray-600 hover:text-gray-800 font-medium">
+                        <i class="fas fa-step-backward mr-1"></i> Вернуться на шаг назад
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics section -->
+            <div class="bg-gray-50 rounded-xl p-6 mb-8">
+                <h3 class="font-bold text-xl mb-4 text-center text-gray-800">Статистика</h3>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded-lg shadow-md">
+                        <div class="text-gray-500 text-sm font-medium">Предложено дат</div>
+                        <div id="total-guesses" class="text-2xl font-bold text-gray-800">0</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow-md">
+                        <div class="text-gray-500 text-sm font-medium">Текущий диапазон</div>
+                        <div id="current-range" class="text-sm font-semibold text-gray-700">Весь диапазон</div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <button id="reset-btn" class="text-sm text-red-600 hover:text-red-800 font-medium">
+                        <i class="fas fa-undo mr-1"></i> Сбросить поиск
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result section (hidden initially) -->
+            <div id="result-section" class="hidden bg-green-50 border border-green-200 rounded-xl p-8 text-center">
+                <div class="text-green-800 text-3xl font-extrabold mb-3">🎉 Ура! Я угадал!</div>
+                <p class="text-green-600 text-lg">Твой день рождения: <span id="final-date" class="font-bold"></span></p>
+                <p class="text-green-600 mt-3 text-lg">Потребовалось попыток: <span id="final-attempts" class="font-bold"></span></p>
+                <button id="play-again-btn" class="mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 shadow-md">
+                    Попробовать ещё раз
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-100 py-6 px-8 text-center text-gray-600 text-sm">
+            Сделано с ❤️ Endermanik13
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configuration
+            const config = {
+                minYear: 1950,
+                maxYear: new Date().getFullYear() - 5,
+                initialDates: 100,
+                maxAttempts: 50,
+                minRangeDays: 1
+            };
+
+            // State
+            const state = {
+                dates: [],
+                currentIndex: 0,
+                attempts: 0,
+                correctDate: null,
+                minRange: null,
+                maxRange: null,
+                history: [],
+                isAnimating: false,
+                isLoading: false
+            };
+
+            // DOM elements
+            const elements = {
+                currentDate: document.getElementById('current-date'),
+                dateAge: document.getElementById('date-age'),
+                minRange: document.getElementById('min-range'),
+                maxRange: document.getElementById('max-range'),
+                earlierBtn: document.getElementById('earlier-btn'),
+                laterBtn: document.getElementById('later-btn'),
+                correctBtn: document.getElementById('correct-btn'),
+                undoBtn: document.getElementById('undo-btn'),
+                totalGuesses: document.getElementById('total-guesses'),
+                currentRange: document.getElementById('current-range'),
+                resultSection: document.getElementById('result-section'),
+                finalDate: document.getElementById('final-date'),
+                finalAttempts: document.getElementById('final-attempts'),
+                playAgainBtn: document.getElementById('play-again-btn'),
+                currentDateContainer: document.getElementById('current-date-container'),
+                resetBtn: document.getElementById('reset-btn')
+            };
+
+            // Initialize the app
+            function init() {
+                state.isLoading = true;
+                generateInitialDates();
+                state.minRange = new Date(config.minYear, 0, 1).getTime();
+                state.maxRange = new Date(config.maxYear, 11, 31).getTime();
+                state.currentIndex = Math.floor(state.dates.length / 2);
+                updateUI();
+                setupEventListeners();
+                setTimeout(() => {
+                    state.isLoading = false;
+                    elements.currentDateContainer.classList.remove('loading');
+                }, 500);
+            }
+
+            // Generate initial dates
+            function generateInitialDates() {
+                const months = [
+                    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+                ];
+
+                const totalDays = (config.maxYear - config.minYear) * 365.25;
+                const step = totalDays / config.initialDates;
+
+                for (let i = 0; i < config.initialDates; i++) {
+                    const daysSinceStart = Math.floor(i * step);
+                    const date = new Date(config.minYear, 0, 1);
+                    date.setDate(date.getDate() + daysSinceStart);
+
+                    if (date.getFullYear() <= config.maxYear) {
+                        state.dates.push({
+                            month: months[date.getMonth()],
+                            day: date.getDate(),
+                            year: date.getFullYear(),
+                            timestamp: date.getTime()
+                        });
+                    }
+                }
+
+                state.dates.sort((a, b) => a.timestamp - b.timestamp);
+            }
+
+            // Smart binary search
+            function findNewDate(direction) {
+                if (state.isLoading || state.attempts >= config.maxAttempts) return;
+
+                state.history.push({
+                    index: state.currentIndex,
+                    minRange: state.minRange,
+                    maxRange: state.maxRange,
+                    dates: [...state.dates]
+                });
+
+                const currentTimestamp = state.dates[state.currentIndex].timestamp;
+                const rangeSize = state.maxRange - state.minRange;
+
+                if (rangeSize < config.minRangeDays * 24 * 60 * 60 * 1000) {
+                    showError('Диапазон слишком мал!');
+                    undoLastAction();
+                    return;
+                }
+
+                if (direction === 'earlier') {
+                    state.maxRange = currentTimestamp - 1000 * 60 * 60 * 24;
+                } else {
+                    state.minRange = currentTimestamp + 1000 * 60 * 60 * 24;
+                }
+
+                let bestIndex = -1;
+                let minDistance = Infinity;
+                const targetTimestamp = (state.minRange + state.maxRange) / 2;
+
+                for (let i = 0; i < state.dates.length; i++) {
+                    const date = state.dates[i];
+                    if (date.timestamp >= state.minRange && date.timestamp <= state.maxRange) {
+                        const distance = Math.abs(date.timestamp - targetTimestamp);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            bestIndex = i;
+                        }
+                    }
+                }
+
+                if (bestIndex === -1) {
+                    generateDatesInRange(10);
+                    bestIndex = findClosestDateInRange();
+
+                    if (bestIndex === -1) {
+                        showError('Не удалось найти подходящую дату. Попробуйте вернуться назад.');
+                        undoLastAction();
+                        return;
+                    }
+                }
+
+                state.currentIndex = bestIndex;
+                state.attempts++;
+                updateUI();
+                animateTransition(direction);
+            }
+
+            // Find closest date in range
+            function findClosestDateInRange() {
+                const targetTimestamp = (state.minRange + state.maxRange) / 2;
+                let minDistance = Infinity;
+                let bestIndex = -1;
+
+                for (let i = 0; i < state.dates.length; i++) {
+                    const distance = Math.abs(state.dates[i].timestamp - targetTimestamp);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        bestIndex = i;
+                    }
+                }
+
+                return bestIndex;
+            }
+
+            // Generate dates within current range
+            function generateDatesInRange(count) {
+                const months = [
+                    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+                ];
+
+                const minDate = new Date(state.minRange);
+                const maxDate = new Date(state.maxRange);
+                const rangeDays = (maxDate - minDate) / (1000 * 60 * 60 * 24);
+
+                for (let i = 0; i < count; i++) {
+                    const randomDays = Math.floor(Math.random() * rangeDays);
+                    const date = new Date(minDate);
+                    date.setDate(date.getDate() + randomDays);
+
+                    const timestamp = date.getTime();
+                    if (timestamp >= state.minRange && timestamp <= state.maxRange) {
+                        state.dates.push({
+                            month: months[date.getMonth()],
+                            day: date.getDate(),
+                            year: date.getFullYear(),
+                            timestamp
+                        });
+                    }
+                }
+
+                state.dates.sort((a, b) => a.timestamp - b.timestamp);
+                state.dates = state.dates.filter((date, index, self) =>
+                    index === self.findIndex(d => d.timestamp === date.timestamp)
+                );
+            }
+
+            // Undo last action
+            function undoLastAction() {
+                if (state.history.length === 0) return;
+
+                const lastState = state.history.pop();
+                state.currentIndex = lastState.index;
+                state.minRange = lastState.minRange;
+                state.maxRange = lastState.maxRange;
+                state.dates = lastState.dates;
+                state.attempts--;
+                updateUI();
+                animateTransition('fade');
+            }
+
+            // Reset search
+            function resetSearch() {
+                state.dates = [];
+                state.currentIndex = 0;
+                state.attempts = 0;
+                state.correctDate = null;
+                state.minRange = new Date(config.minYear, 0, 1).getTime();
+                state.maxRange = new Date(config.maxYear, 11, 31).getTime();
+                state.history = [];
+                generateInitialDates();
+                state.currentIndex = Math.floor(state.dates.length / 2);
+                updateUI();
+                animateTransition('fade');
+            }
+
+            // Update UI
+            function updateUI() {
+                if (!state.dates[state.currentIndex]) return;
+
+                const currentDate = state.dates[state.currentIndex];
+                elements.currentDate.textContent = `${currentDate.month} ${currentDate.day}, ${currentDate.year}`;
+
+                const today = new Date();
+                const birthDate = new Date(currentDate.year, 
+                    ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'].indexOf(currentDate.month), 
+                    currentDate.day);
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+
+                elements.dateAge.textContent = `(В этом году будет ${age} лет)`;
+
+                const minDate = new Date(state.minRange);
+                const maxDate = new Date(state.maxRange);
+                elements.minRange.textContent = `${minDate.getFullYear()}.${String(minDate.getMonth() + 1).padStart(2, '0')}.${String(minDate.getDate()).padStart(2, '0')}`;
+                elements.maxRange.textContent = `${maxDate.getFullYear()}.${String(maxDate.getMonth() + 1).padStart(2, '0')}.${String(maxDate.getDate()).padStart(2, '0')}`;
+                elements.currentRange.textContent = `${minDate.getFullYear()} - ${maxDate.getFullYear()}`;
+                elements.totalGuesses.textContent = state.attempts;
+
+                elements.undoBtn.disabled = state.history.length === 0;
+                const rangeSize = state.maxRange - state.minRange;
+                const isRangeValid = rangeSize >= config.minRangeDays * 24 * 60 * 60 * 1000;
+
+                elements.earlierBtn.classList.toggle('disabled-btn', !isRangeValid);
+                elements.laterBtn.classList.toggle('disabled-btn', !isRangeValid);
+                elements.earlierBtn.disabled = !isRangeValid;
+                elements.laterBtn.disabled = !isRangeValid;
+            }
+
+            // Animate transition
+            function animateTransition(direction) {
+                if (state.isAnimating) return;
+
+                state.isAnimating = true;
+                elements.currentDateContainer.classList.remove('slide-in-left', 'slide-in-right', 'fade-in');
+
+                void elements.currentDateContainer.offsetWidth;
+
+                if (direction === 'earlier') {
+                    elements.currentDateContainer.classList.add('slide-in-left');
+                } else if (direction === 'later') {
+                    elements.currentDateContainer.classList.add('slide-in-right');
+                } else {
+                    elements.currentDateContainer.classList.add('fade-in');
+                }
+
+                setTimeout(() => {
+                    elements.currentDateContainer.classList.remove('slide-in-left', 'slide-in-right', 'fade-in');
+                    state.isAnimating = false;
+                }, 600);
+            }
+
+            // Create sparkle effect
+            function createSparkleEffect() {
+                const container = elements.currentDateContainer;
+                const rect = container.getBoundingClientRect();
+
+                for (let i = 0; i < 30; i++) {
+                    const sparkle = document.createElement('div');
+                    sparkle.className = 'sparkle';
+                    sparkle.style.left = `${rect.left + Math.random() * rect.width}px`;
+                    sparkle.style.top = `${rect.top + Math.random() * rect.height}px`;
+                    sparkle.style.animationDelay = `${Math.random() * 0.5}s`;
+                    document.body.appendChild(sparkle);
+                    setTimeout(() => sparkle.remove(), 2000);
+                }
+            }
+
+            // Show error message
+            function showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg fade-in';
+                errorDiv.textContent = message;
+                document.body.appendChild(errorDiv);
+                setTimeout(() => errorDiv.remove(), 3000);
+            }
+
+            // Handle correct guess
+            function handleCorrectGuess() {
+                state.correctDate = state.dates[state.currentIndex];
+                elements.currentDateContainer.classList.add('celebrate');
+                createSparkleEffect();
+
+                setTimeout(() => {
+                    elements.finalDate.textContent = 
+                        `${state.correctDate.month} ${state.correctDate.day}, ${state.correctDate.year}`;
+                    elements.finalAttempts.textContent = state.attempts;
+                    elements.resultSection.classList.remove('hidden');
+                    elements.resultSection.classList.add('fade-in');
+
+                    elements.earlierBtn.disabled = true;
+                    elements.laterBtn.disabled = true;
+                    elements.correctBtn.disabled = true;
+                }, 800);
+            }
+
+            // Play again
+            function playAgain() {
+                state.dates = [];
+                state.currentIndex = 0;
+                state.attempts = 0;
+                state.correctDate = null;
+                state.minRange = new Date(config.minYear, 0, 1).getTime();
+                state.maxRange = new Date(config.maxYear, 11, 31).getTime();
+                state.history = [];
+                elements.resultSection.classList.add('hidden');
+                elements.currentDateContainer.classList.remove('celebrate');
+                elements.earlierBtn.disabled = false;
+                elements.laterBtn.disabled = false;
+                elements.correctBtn.disabled = false;
+                init();
+            }
+
+            // Setup event listeners
+            function setupEventListeners() {
+                elements.earlierBtn.addEventListener('click', () => {
+                    if (!state.isAnimating && !elements.earlierBtn.disabled) {
+                        findNewDate('earlier');
+                    }
+                });
+
+                elements.laterBtn.addEventListener('click', () => {
+                    if (!state.isAnimating && !elements.laterBtn.disabled) {
+                        findNewDate('later');
+                    }
+                });
+
+                elements.correctBtn.addEventListener('click', handleCorrectGuess);
+                elements.undoBtn.addEventListener('click', undoLastAction);
+                elements.playAgainBtn.addEventListener('click', playAgain);
+                elements.resetBtn.addEventListener('click', resetSearch);
+
+                document.addEventListener('keydown', (e) => {
+                    if (state.isAnimating || state.isLoading) return;
+
+                    if (e.key === 'ArrowLeft' && !elements.earlierBtn.disabled) {
+                        findNewDate('earlier');
+                    } else if (e.key === 'ArrowRight' && !elements.laterBtn.disabled) {
+                        findNewDate('later');
+                    } else if (e.key === 'Enter') {
+                        handleCorrectGuess();
+                    }
+                });
+            }
+
+            // Start the app
+            init();
+        });
+    </script>
+</body>
+</html>
